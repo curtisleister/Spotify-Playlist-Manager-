@@ -5,45 +5,74 @@
 A Spotify Playlist Manager application for managing a specific work playlist. This project is being developed with Claude Code assistance.
 
 **Repository**: `curtisleister/Spotify-Playlist-Manager-`
-**Status**: Early-stage / greenfield project
+**Status**: MVP built (Phase 1 + Phase 2)
 
 ## Repository Structure
 
 ```
 Spotify-Playlist-Manager-/
-├── CLAUDE.md          # AI assistant guidelines (this file)
-└── README.md          # Project description
+├── CLAUDE.md                  # AI assistant guidelines (this file)
+├── README.md                  # Project description
+├── index.html                 # HTML entry point
+├── package.json               # Dependencies and scripts
+├── vite.config.ts             # Vite + Tailwind CSS config
+├── tsconfig.json              # TypeScript config
+├── .env.example               # Environment variable template
+├── .gitignore                 # Git ignore rules
+├── tasks/
+│   ├── todo.md                # Build plan with checkable items
+│   └── lessons.md             # Lessons learned during development
+└── src/
+    ├── main.tsx               # React entry point
+    ├── App.tsx                # Router and auth wrapper
+    ├── index.css              # Tailwind imports + Spotify theme
+    ├── types/
+    │   └── spotify.ts         # TypeScript types for Spotify API
+    ├── utils/
+    │   ├── pkce.ts            # PKCE code challenge generation
+    │   ├── dateFilters.ts     # Date filtering utilities
+    │   └── export.ts          # CSV/ZIP export utilities
+    ├── hooks/
+    │   └── useAuth.ts         # Spotify OAuth PKCE auth hook
+    ├── services/
+    │   └── spotify.ts         # Spotify Web API service layer
+    └── pages/
+        ├── LoginPage.tsx      # Spotify login screen
+        ├── Dashboard.tsx      # Playlist grid with search
+        ├── PlaylistDetail.tsx # Track list + old song detector + removal
+        ├── MultiPlaylistManager.tsx  # Side-by-side playlist editor
+        └── PlaylistAnalyzer.tsx      # Charts and audio feature analysis
 ```
-
-> This project is in its initial phase. Structure will be updated as code is added.
 
 ## Technology Stack
 
-Not yet established. When choosing a stack, consider:
-- **Spotify Web API** integration is a core requirement (OAuth 2.0 / PKCE auth flow)
-- The app manages a specific work playlist (CRUD operations on playlist tracks)
+- **React 19 + TypeScript** — UI framework
+- **Vite** — Build tool and dev server
+- **Tailwind CSS v4** — Styling (dark mode, Spotify-themed)
+- **React Router v7** — Client-side routing
+- **Recharts** — Charts and data visualization
+- **Spotify Web API** — OAuth 2.0 PKCE auth flow, playlist CRUD, audio features
+- **file-saver + JSZip** — CSV/ZIP export for playlist backups
 
 ## Development Setup
 
 ### Prerequisites
-- Git
-- A Spotify Developer account and registered application (for API credentials)
+- Node.js 18+
+- A Spotify Developer account and registered application
 
 ### Getting Started
 1. Clone the repository
-2. (Further setup steps to be added as the project develops)
+2. `npm install` — Install dependencies
+3. Copy `.env.example` to `.env` and add your Spotify Client ID
+4. `npm run dev` — Start dev server at http://localhost:5173
 
 ## Build & Run Commands
 
-> No build system configured yet. This section should be updated when a framework/toolchain is chosen.
-
-<!-- Example (update when stack is chosen):
-- `npm install` - Install dependencies
-- `npm run dev` - Start development server
-- `npm run build` - Production build
-- `npm test` - Run tests
-- `npm run lint` - Run linter
--->
+- `npm install` — Install dependencies
+- `npm run dev` — Start development server (http://localhost:5173)
+- `npm run build` — Production build to `dist/`
+- `npx tsc --noEmit` — Type-check without building
+- `npm run lint` — Run ESLint
 
 ## Testing
 
@@ -133,15 +162,31 @@ Not yet established. When choosing a stack, consider:
 
 ## Architecture Notes
 
-> To be documented as the application architecture takes shape. Key areas to document:
-> - Authentication flow
-> - API integration layer
-> - State management approach
-> - Data models (playlists, tracks, user)
+### Authentication Flow
+- PKCE (Proof Key for Code Exchange) flow — fully client-side, no backend needed
+- `useAuth` hook manages login, token storage (localStorage), auto-refresh, and logout
+- Tokens refresh automatically every 60 seconds if expired
+- Scopes: `user-read-private`, `user-read-email`, `playlist-read-private`, `playlist-read-collaborative`, `playlist-modify-public`, `playlist-modify-private`
+
+### API Integration Layer
+- `src/services/spotify.ts` — singleton service class wrapping all Spotify API calls
+- Handles pagination automatically (playlists, tracks)
+- Batches requests for audio features and track removal (100 per request max)
+- Throws `'UNAUTHORIZED'` on 401 to trigger re-auth
+
+### State Management
+- React local state (`useState`) + prop drilling — no global state library
+- Auth state managed via `useAuth` hook at the App level
+- Each page manages its own data fetching and state
+
+### Data Models
+- Types defined in `src/types/spotify.ts`
+- Key types: `SpotifyPlaylist`, `PlaylistTrack`, `AudioFeatures`, `PlaylistTrackWithFeatures`
 
 ## Known Issues / TODOs
 
-- Project scaffolding not yet created
-- Technology stack not yet decided
-- No CI/CD pipeline configured
-- No `.gitignore` file present
+- No test framework configured
+- No CI/CD pipeline
+- Deployment to Vercel not yet set up
+- Phase 3+ features (smart playlist generator, AI descriptions, recommender) not yet built
+- Bundle could be code-split for better loading performance
