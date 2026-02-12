@@ -30,6 +30,7 @@ class SpotifyService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
+      console.error(`Spotify API error on ${endpoint}:`, response.status, error);
       throw new Error(error?.error?.message || `API error: ${response.status}`);
     }
 
