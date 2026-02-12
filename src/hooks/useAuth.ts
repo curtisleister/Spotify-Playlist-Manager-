@@ -19,6 +19,9 @@ const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
 const EXPIRY_KEY = 'spotify_token_expiry';
 const VERIFIER_KEY = 'spotify_code_verifier';
 
+// Guard against StrictMode double-execution of the callback
+let callbackInProgress = false;
+
 export function useAuth() {
   const [user, setUser] = useState<SpotifyUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,8 +154,20 @@ export function useAuth() {
         }
 
         if (code) {
-          await handleCallback(code);
+          // Clear URL immediately to prevent StrictMode double-execution
           window.history.replaceState({}, '', '/');
+
+          if (callbackInProgress) {
+            setIsLoading(false);
+            return;
+          }
+          callbackInProgress = true;
+
+          try {
+            await handleCallback(code);
+          } finally {
+            callbackInProgress = false;
+          }
           setIsLoading(false);
           return;
         }
