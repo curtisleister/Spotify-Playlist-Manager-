@@ -78,7 +78,7 @@ class SpotifyService {
     next: string | null;
   }> {
     return this.fetch(
-      `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}&fields=items(added_at,track(id,name,artists(id,name,genres),album(id,name,images,release_date),duration_ms,uri,popularity,preview_url)),total,next`
+      `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`
     );
   }
 
