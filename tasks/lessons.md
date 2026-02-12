@@ -3,4 +3,10 @@
 > This file tracks patterns, mistakes, and insights discovered during development.
 > Review at the start of each session.
 
-(No entries yet — will be updated as the project progresses.)
+## Spotify API — Redirect URI Rules (as of Nov 2025)
+
+- `http://localhost:...` is **no longer allowed** by Spotify's developer dashboard
+- Use `http://127.0.0.1:PORT/callback` instead (loopback IP exception)
+- HTTPS is required for all non-loopback redirect URIs
+- Always use `127.0.0.1` not `localhost` in `.env.example` and documentation
+- Reference: https://developer.spotify.com/blog/2025-02-12-increasing-the-security-requirements-for-integrating-with-spotify
