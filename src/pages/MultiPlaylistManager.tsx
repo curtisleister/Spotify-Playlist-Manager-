@@ -305,7 +305,7 @@ function MultiPlaylistManager() {
                     className="h-4 w-4 rounded border-gray-600 bg-[#121212] text-[#1DB954] accent-[#1DB954]"
                   />
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    {playlist.images[0] ? (
+                    {playlist.images?.[0] ? (
                       <img
                         src={playlist.images[0].url}
                         alt=""
@@ -321,7 +321,7 @@ function MultiPlaylistManager() {
                         {playlist.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {playlist.tracks.total} tracks
+                        {playlist.tracks?.total ?? 0} tracks
                       </p>
                     </div>
                     {isLoading && (

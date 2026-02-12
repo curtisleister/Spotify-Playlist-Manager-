@@ -193,7 +193,7 @@ function PlaylistAnalyzer() {
               </option>
               {playlists.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} ({p.tracks.total} tracks)
+                  {p.name} ({p.tracks?.total ?? 0} tracks)
                 </option>
               ))}
             </select>
@@ -234,7 +234,7 @@ function PlaylistAnalyzer() {
                   .filter((p) => p.id !== selectedId)
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.tracks.total} tracks)
+                      {p.name} ({p.tracks?.total ?? 0} tracks)
                     </option>
                   ))}
               </select>
