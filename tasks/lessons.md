@@ -10,3 +10,9 @@
 - HTTPS is required for all non-loopback redirect URIs
 - Always use `127.0.0.1` not `localhost` in `.env.example` and documentation
 - Reference: https://developer.spotify.com/blog/2025-02-12-increasing-the-security-requirements-for-integrating-with-spotify
+
+## React StrictMode + OAuth Callbacks
+
+- StrictMode runs effects twice in development, which breaks single-use OAuth codes
+- Fix: clear the callback code from the URL synchronously (before async work) and use a module-level guard flag
+- Always test OAuth flows with StrictMode in mind
