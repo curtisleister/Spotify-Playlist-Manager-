@@ -22,3 +22,10 @@
 - ALWAYS use optional chaining on Spotify API response fields (e.g., `playlist.tracks?.total`, `playlist.images?.[0]`, `playlist.owner?.display_name`)
 - Spotify can return playlists with missing/undefined nested fields (deleted playlists, restricted access, development mode limitations)
 - Apply this pattern in EVERY component that renders playlist or track data — not just Dashboard
+
+## Spotify API — Fields Parameter
+
+- Do NOT use the `fields` parameter on playlist tracks endpoint to request fields that don't exist on simplified objects
+- `artists` in playlist track responses are **simplified artist objects** — they do NOT have `genres`
+- Requesting invalid fields can cause 403 Forbidden (not 400), making the error misleading
+- When in doubt, omit the `fields` parameter entirely and let the API return full objects
