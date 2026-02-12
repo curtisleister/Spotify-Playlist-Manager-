@@ -227,10 +227,10 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                       {playlist.name}
                     </span>
                     <span className="mt-1 truncate text-sm text-[#b3b3b3]">
-                      {playlist.tracks.total}{' '}
-                      {playlist.tracks.total === 1 ? 'track' : 'tracks'}
+                      {playlist.tracks?.total ?? 0}{' '}
+                      {(playlist.tracks?.total ?? 0) === 1 ? 'track' : 'tracks'}
                       {' \u00B7 '}
-                      {playlist.owner.display_name ?? 'Unknown'}
+                      {playlist.owner?.display_name ?? 'Unknown'}
                     </span>
                   </button>
                 ))}
