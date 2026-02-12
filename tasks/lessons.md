@@ -16,3 +16,9 @@
 - StrictMode runs effects twice in development, which breaks single-use OAuth codes
 - Fix: clear the callback code from the URL synchronously (before async work) and use a module-level guard flag
 - Always test OAuth flows with StrictMode in mind
+
+## Spotify API — Defensive Coding
+
+- ALWAYS use optional chaining on Spotify API response fields (e.g., `playlist.tracks?.total`, `playlist.images?.[0]`, `playlist.owner?.display_name`)
+- Spotify can return playlists with missing/undefined nested fields (deleted playlists, restricted access, development mode limitations)
+- Apply this pattern in EVERY component that renders playlist or track data — not just Dashboard
