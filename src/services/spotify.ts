@@ -60,6 +60,9 @@ class SpotifyService {
 
     while (offset < total) {
       const response = await this.getPlaylists(limit, offset);
+      if (offset === 0 && response.items.length > 0) {
+        console.log('Raw first playlist from API:', JSON.stringify(response.items[0], null, 2));
+      }
       const validPlaylists = response.items.filter(
         (item): item is SpotifyPlaylist => item !== null && item !== undefined
       );

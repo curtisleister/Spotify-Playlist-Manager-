@@ -121,6 +121,7 @@ export function useAuth() {
     }
 
     const data = await response.json();
+    console.log('Token granted scopes:', data.scope);
     const expiresAt = Date.now() + data.expires_in * 1000;
     localStorage.setItem(TOKEN_KEY, data.access_token);
     localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
