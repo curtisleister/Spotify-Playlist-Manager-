@@ -15,29 +15,43 @@ class SpotifyService {
   }
 
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-    });
+    const maxRetries = 3;
 
-    if (response.status === 401) {
-      throw new Error('UNAUTHORIZED');
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (response.status === 401) {
+        throw new Error('UNAUTHORIZED');
+      }
+
+      if (response.status === 429 && attempt < maxRetries) {
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '2', 10);
+        const waitMs = retryAfter * 1000;
+        console.log(`Rate limited on ${endpoint}, waiting ${retryAfter}s before retry...`);
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const message = error?.error?.message || `API error: ${response.status}`;
+        const detail = `[${response.status}] ${endpoint} — ${message}`;
+        console.error('Spotify API error:', detail, error);
+        throw new Error(detail);
+      }
+
+      if (response.status === 204) return {} as T;
+      return response.json();
     }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const message = error?.error?.message || `API error: ${response.status}`;
-      const detail = `[${response.status}] ${endpoint} — ${message}`;
-      console.error('Spotify API error:', detail, error);
-      throw new Error(detail);
-    }
-
-    if (response.status === 204) return {} as T;
-    return response.json();
+    throw new Error(`Rate limited on ${endpoint} after ${maxRetries} retries`);
   }
 
   async getCurrentUser(): Promise<SpotifyUser> {
@@ -115,6 +129,9 @@ class SpotifyService {
     const features: AudioFeatures[] = [];
     // API accepts max 100 IDs at a time
     for (let i = 0; i < trackIds.length; i += 100) {
+      if (i > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
       const batch = trackIds.slice(i, i + 100);
       const response = await this.fetch<{ audio_features: (AudioFeatures | null)[] }>(
         `/audio-features?ids=${batch.join(',')}`
