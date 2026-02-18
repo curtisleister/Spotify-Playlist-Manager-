@@ -93,7 +93,7 @@ class SpotifyService {
 
     while (offset < total) {
       const response = await this.getPlaylistItems(playlistId, limit, offset);
-      const validTracks = response.items.filter((item) => item?.track !== null);
+      const validTracks = response.items.filter((item) => item?.track != null && item.track.uri);
       tracks.push(...validTracks);
       total = response.total;
       offset += limit;
