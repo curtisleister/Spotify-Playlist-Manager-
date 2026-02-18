@@ -7,13 +7,37 @@ import type {
 
 const API_BASE = 'https://api.spotify.com/v1';
 
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
 class SpotifyService {
   private accessToken: string = '';
   private lastRequestTime = 0;
   private readonly minRequestInterval = 100; // ms between requests
+  private playlistsCache: CacheEntry<SpotifyPlaylist[]> | null = null;
+  private tracksCache = new Map<string, CacheEntry<PlaylistTrack[]>>();
+  private audioFeaturesCache = new Map<string, CacheEntry<AudioFeatures[]>>();
 
   setAccessToken(token: string) {
     this.accessToken = token;
+    // Clear caches when token changes (new login)
+    this.playlistsCache = null;
+    this.tracksCache.clear();
+    this.audioFeaturesCache.clear();
+  }
+
+  clearCache() {
+    this.playlistsCache = null;
+    this.tracksCache.clear();
+    this.audioFeaturesCache.clear();
+  }
+
+  private isCacheValid<T>(entry: CacheEntry<T> | null | undefined): entry is CacheEntry<T> {
+    return entry != null && (Date.now() - entry.timestamp) < CACHE_TTL;
   }
 
   private async throttle() {
@@ -80,6 +104,10 @@ class SpotifyService {
   }
 
   async getAllPlaylists(): Promise<SpotifyPlaylist[]> {
+    if (this.isCacheValid(this.playlistsCache)) {
+      return this.playlistsCache.data;
+    }
+
     const playlists: SpotifyPlaylist[] = [];
     let offset = 0;
     const limit = 50;
@@ -95,6 +123,7 @@ class SpotifyService {
       offset += limit;
     }
 
+    this.playlistsCache = { data: playlists, timestamp: Date.now() };
     return playlists;
   }
 
@@ -113,6 +142,11 @@ class SpotifyService {
   }
 
   async getAllPlaylistTracks(playlistId: string): Promise<PlaylistTrack[]> {
+    const cached = this.tracksCache.get(playlistId);
+    if (this.isCacheValid(cached)) {
+      return cached.data;
+    }
+
     const tracks: PlaylistTrack[] = [];
     let offset = 0;
     const limit = 100;
@@ -135,10 +169,17 @@ class SpotifyService {
       offset += limit;
     }
 
+    this.tracksCache.set(playlistId, { data: tracks, timestamp: Date.now() });
     return tracks;
   }
 
   async getAudioFeatures(trackIds: string[]): Promise<AudioFeatures[]> {
+    const cacheKey = trackIds.sort().join(',');
+    const cached = this.audioFeaturesCache.get(cacheKey);
+    if (this.isCacheValid(cached)) {
+      return cached.data;
+    }
+
     const features: AudioFeatures[] = [];
     // API accepts max 100 IDs at a time
     for (let i = 0; i < trackIds.length; i += 100) {
@@ -153,6 +194,8 @@ class SpotifyService {
         ...response.audio_features.filter((f): f is AudioFeatures => f !== null)
       );
     }
+
+    this.audioFeaturesCache.set(cacheKey, { data: features, timestamp: Date.now() });
     return features;
   }
 
@@ -170,6 +213,8 @@ class SpotifyService {
         }),
       });
     }
+    this.tracksCache.delete(playlistId);
+    this.playlistsCache = null;
   }
 
   async addTracksToPlaylist(
@@ -183,6 +228,8 @@ class SpotifyService {
         body: JSON.stringify({ uris: batch }),
       });
     }
+    this.tracksCache.delete(playlistId);
+    this.playlistsCache = null;
   }
 
   async deletePlaylist(playlistId: string): Promise<void> {
