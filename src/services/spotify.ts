@@ -76,7 +76,7 @@ class SpotifyService {
     limit = 100,
     offset = 0
   ): Promise<{
-    items: PlaylistTrack[];
+    items: Record<string, unknown>[];
     total: number;
     next: string | null;
   }> {
@@ -93,15 +93,17 @@ class SpotifyService {
 
     while (offset < total) {
       const response = await this.getPlaylistItems(playlistId, limit, offset);
-      if (offset === 0 && response.items.length > 0) {
-        console.log('Raw first track item from API:', JSON.stringify(response.items[0], null, 2));
-        console.log('Total items in response:', response.items.length, 'Total:', response.total);
-      }
-      const validTracks = response.items.filter((item) => item?.track != null && item.track.uri);
-      if (offset === 0) {
-        console.log('Valid tracks after filter:', validTracks.length);
-      }
-      tracks.push(...validTracks);
+      // Spotify renamed "track" to "item" in the response — normalize it
+      const normalized: PlaylistTrack[] = response.items
+        .map((entry: Record<string, unknown>) => {
+          const trackData = entry.track ?? entry.item;
+          if (!trackData || typeof trackData !== 'object') return null;
+          const td = trackData as Record<string, unknown>;
+          if (!td.uri || td.type !== 'track') return null;
+          return { added_at: entry.added_at as string, track: td } as unknown as PlaylistTrack;
+        })
+        .filter((item): item is PlaylistTrack => item !== null);
+      tracks.push(...normalized);
       total = response.total;
       offset += limit;
     }
