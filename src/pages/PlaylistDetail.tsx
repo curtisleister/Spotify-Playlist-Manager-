@@ -138,16 +138,33 @@ function PlaylistDetail() {
   }
 
   if (error) {
+    const isRateLimited = error.includes('RATE_LIMITED');
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#121212]">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <p className="text-lg text-red-500">{error}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="rounded-lg bg-[#282828] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333333]"
-          >
-            Back to Dashboard
-          </button>
+        <div className="flex flex-col items-center gap-4 text-center max-w-md px-4">
+          {isRateLimited ? (
+            <p className="text-lg text-yellow-400">
+              Spotify is temporarily limiting requests. Wait about a minute, then try again.
+            </p>
+          ) : (
+            <p className="text-lg text-red-500">{error}</p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="rounded-lg bg-[#282828] px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-[#333333]"
+            >
+              Back to Dashboard
+            </button>
+            {isRateLimited && (
+              <button
+                onClick={() => { setError(null); setLoading(true); window.location.reload(); }}
+                className="rounded-lg bg-[#1DB954] px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
+              >
+                Try again
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

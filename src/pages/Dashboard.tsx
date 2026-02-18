@@ -171,14 +171,30 @@ function Dashboard({ user, onLogout }: DashboardProps) {
         {/* Error state */}
         {!loading && error && (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="rounded-lg bg-red-900/30 px-6 py-4 text-center">
-              <p className="text-sm font-medium text-red-400">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-3 text-sm font-medium text-[#1DB954] transition-colors duration-200 hover:text-[#1ed760]"
-              >
-                Try again
-              </button>
+            <div className="rounded-lg bg-red-900/30 px-6 py-4 text-center max-w-md">
+              {error.includes('RATE_LIMITED') ? (
+                <>
+                  <p className="text-sm font-medium text-yellow-400">
+                    Spotify is temporarily limiting requests. This usually resolves in about a minute.
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-3 rounded-lg bg-[#1DB954] px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1ed760]"
+                  >
+                    Try again
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-red-400">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-3 text-sm font-medium text-[#1DB954] transition-colors duration-200 hover:text-[#1ed760]"
+                  >
+                    Try again
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

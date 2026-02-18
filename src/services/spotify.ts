@@ -6,38 +6,58 @@ import type {
 } from '../types/spotify';
 
 const API_BASE = 'https://api.spotify.com/v1';
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const CACHE_PREFIX = 'spm_cache_';
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+// --- localStorage-backed cache ---
+function cacheGet<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as { data: T; timestamp: number };
+    if (Date.now() - entry.timestamp > CACHE_TTL) {
+      localStorage.removeItem(CACHE_PREFIX + key);
+      return null;
+    }
+    return entry.data;
+  } catch {
+    return null;
+  }
+}
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
+function cacheSet<T>(key: string, data: T): void {
+  try {
+    localStorage.setItem(
+      CACHE_PREFIX + key,
+      JSON.stringify({ data, timestamp: Date.now() })
+    );
+  } catch {
+    // localStorage full — silently ignore
+  }
+}
+
+function cacheDelete(key: string): void {
+  localStorage.removeItem(CACHE_PREFIX + key);
 }
 
 class SpotifyService {
   private accessToken: string = '';
   private lastRequestTime = 0;
-  private readonly minRequestInterval = 100; // ms between requests
-  private playlistsCache: CacheEntry<SpotifyPlaylist[]> | null = null;
-  private tracksCache = new Map<string, CacheEntry<PlaylistTrack[]>>();
-  private audioFeaturesCache = new Map<string, CacheEntry<AudioFeatures[]>>();
+  private readonly minRequestInterval = 150; // ms between requests
 
   setAccessToken(token: string) {
     this.accessToken = token;
-    // Clear caches when token changes (new login)
-    this.playlistsCache = null;
-    this.tracksCache.clear();
-    this.audioFeaturesCache.clear();
   }
 
   clearCache() {
-    this.playlistsCache = null;
-    this.tracksCache.clear();
-    this.audioFeaturesCache.clear();
-  }
-
-  private isCacheValid<T>(entry: CacheEntry<T> | null | undefined): entry is CacheEntry<T> {
-    return entry != null && (Date.now() - entry.timestamp) < CACHE_TTL;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(CACHE_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
   }
 
   private async throttle() {
@@ -68,10 +88,11 @@ class SpotifyService {
         throw new Error('UNAUTHORIZED');
       }
 
-      if (response.status === 429 && attempt < maxRetries) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '3', 10);
-        const waitMs = Math.max(retryAfter * 1000, 2000 * (attempt + 1));
-        console.log(`Rate limited on ${endpoint}, waiting ${waitMs / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
+      if (response.status === 429) {
+        if (attempt >= maxRetries) break;
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '5', 10);
+        const waitMs = Math.max(retryAfter * 1000, 3000 * (attempt + 1));
+        console.log(`Rate limited, waiting ${waitMs / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
         await new Promise((resolve) => setTimeout(resolve, waitMs));
         continue;
       }
@@ -88,7 +109,9 @@ class SpotifyService {
       return response.json();
     }
 
-    throw new Error(`Rate limited on ${endpoint} after ${maxRetries} retries`);
+    throw new Error(
+      'RATE_LIMITED: Spotify is temporarily limiting requests. Please wait a minute and try again.'
+    );
   }
 
   async getCurrentUser(): Promise<SpotifyUser> {
@@ -104,9 +127,8 @@ class SpotifyService {
   }
 
   async getAllPlaylists(): Promise<SpotifyPlaylist[]> {
-    if (this.isCacheValid(this.playlistsCache)) {
-      return this.playlistsCache.data;
-    }
+    const cached = cacheGet<SpotifyPlaylist[]>('playlists');
+    if (cached) return cached;
 
     const playlists: SpotifyPlaylist[] = [];
     let offset = 0;
@@ -123,7 +145,7 @@ class SpotifyService {
       offset += limit;
     }
 
-    this.playlistsCache = { data: playlists, timestamp: Date.now() };
+    cacheSet('playlists', playlists);
     return playlists;
   }
 
@@ -142,10 +164,8 @@ class SpotifyService {
   }
 
   async getAllPlaylistTracks(playlistId: string): Promise<PlaylistTrack[]> {
-    const cached = this.tracksCache.get(playlistId);
-    if (this.isCacheValid(cached)) {
-      return cached.data;
-    }
+    const cached = cacheGet<PlaylistTrack[]>(`tracks_${playlistId}`);
+    if (cached) return cached;
 
     const tracks: PlaylistTrack[] = [];
     let offset = 0;
@@ -169,16 +189,14 @@ class SpotifyService {
       offset += limit;
     }
 
-    this.tracksCache.set(playlistId, { data: tracks, timestamp: Date.now() });
+    cacheSet(`tracks_${playlistId}`, tracks);
     return tracks;
   }
 
   async getAudioFeatures(trackIds: string[]): Promise<AudioFeatures[]> {
-    const cacheKey = trackIds.sort().join(',');
-    const cached = this.audioFeaturesCache.get(cacheKey);
-    if (this.isCacheValid(cached)) {
-      return cached.data;
-    }
+    const cacheKey = `audio_${trackIds.slice(0, 5).join('_')}_${trackIds.length}`;
+    const cached = cacheGet<AudioFeatures[]>(cacheKey);
+    if (cached) return cached;
 
     const features: AudioFeatures[] = [];
     // API accepts max 100 IDs at a time
@@ -195,7 +213,7 @@ class SpotifyService {
       );
     }
 
-    this.audioFeaturesCache.set(cacheKey, { data: features, timestamp: Date.now() });
+    cacheSet(cacheKey, features);
     return features;
   }
 
@@ -213,8 +231,8 @@ class SpotifyService {
         }),
       });
     }
-    this.tracksCache.delete(playlistId);
-    this.playlistsCache = null;
+    cacheDelete(`tracks_${playlistId}`);
+    cacheDelete('playlists');
   }
 
   async addTracksToPlaylist(
@@ -228,8 +246,8 @@ class SpotifyService {
         body: JSON.stringify({ uris: batch }),
       });
     }
-    this.tracksCache.delete(playlistId);
-    this.playlistsCache = null;
+    cacheDelete(`tracks_${playlistId}`);
+    cacheDelete('playlists');
   }
 
   async deletePlaylist(playlistId: string): Promise<void> {
