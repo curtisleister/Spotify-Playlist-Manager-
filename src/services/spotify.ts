@@ -9,15 +9,28 @@ const API_BASE = 'https://api.spotify.com/v1';
 
 class SpotifyService {
   private accessToken: string = '';
+  private lastRequestTime = 0;
+  private readonly minRequestInterval = 100; // ms between requests
 
   setAccessToken(token: string) {
     this.accessToken = token;
   }
 
+  private async throttle() {
+    const now = Date.now();
+    const elapsed = now - this.lastRequestTime;
+    if (elapsed < this.minRequestInterval) {
+      await new Promise((resolve) => setTimeout(resolve, this.minRequestInterval - elapsed));
+    }
+    this.lastRequestTime = Date.now();
+  }
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const maxRetries = 3;
+    const maxRetries = 5;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      await this.throttle();
+
       const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers: {
@@ -32,9 +45,9 @@ class SpotifyService {
       }
 
       if (response.status === 429 && attempt < maxRetries) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') || '2', 10);
-        const waitMs = retryAfter * 1000;
-        console.log(`Rate limited on ${endpoint}, waiting ${retryAfter}s before retry...`);
+        const retryAfter = parseInt(response.headers.get('Retry-After') || '3', 10);
+        const waitMs = Math.max(retryAfter * 1000, 2000 * (attempt + 1));
+        console.log(`Rate limited on ${endpoint}, waiting ${waitMs / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
         await new Promise((resolve) => setTimeout(resolve, waitMs));
         continue;
       }
@@ -130,7 +143,7 @@ class SpotifyService {
     // API accepts max 100 IDs at a time
     for (let i = 0; i < trackIds.length; i += 100) {
       if (i > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
       const batch = trackIds.slice(i, i + 100);
       const response = await this.fetch<{ audio_features: (AudioFeatures | null)[] }>(
