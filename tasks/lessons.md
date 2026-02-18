@@ -31,6 +31,8 @@
 - Using the old `/tracks` endpoint returns **403 Forbidden** (not 404), making the error misleading
 - Always use `playlist.items?.total ?? playlist.tracks?.total ?? 0` for backwards compatibility
 - The `href` field in the response reveals the correct endpoint: check it when debugging API issues
+- Inside each playlist item, the track object is also in `item` not `track` (i.e., `entry.item.name` not `entry.track.name`)
+- Normalize `item` → `track` in the service layer so the rest of the app can use `entry.track` consistently
 - **Diagnostic approach that worked**: logging the raw API response (`JSON.stringify(response.items[0])`) to see actual field names
 
 ## Spotify API — Fields Parameter
