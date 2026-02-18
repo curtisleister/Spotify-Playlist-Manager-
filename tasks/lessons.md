@@ -23,6 +23,16 @@
 - Spotify can return playlists with missing/undefined nested fields (deleted playlists, restricted access, development mode limitations)
 - Apply this pattern in EVERY component that renders playlist or track data — not just Dashboard
 
+## Spotify API — `items` vs `tracks` Rename (as of 2025/2026)
+
+- Spotify renamed the playlist tracks field from `tracks` to `items` in their API responses
+- The simplified playlist object from `/me/playlists` now returns `items: {href, total}` instead of `tracks: {href, total}`
+- The endpoint for playlist tracks changed from `/playlists/{id}/tracks` to `/playlists/{id}/items`
+- Using the old `/tracks` endpoint returns **403 Forbidden** (not 404), making the error misleading
+- Always use `playlist.items?.total ?? playlist.tracks?.total ?? 0` for backwards compatibility
+- The `href` field in the response reveals the correct endpoint: check it when debugging API issues
+- **Diagnostic approach that worked**: logging the raw API response (`JSON.stringify(response.items[0])`) to see actual field names
+
 ## Spotify API — Fields Parameter
 
 - Do NOT use the `fields` parameter on playlist tracks endpoint to request fields that don't exist on simplified objects

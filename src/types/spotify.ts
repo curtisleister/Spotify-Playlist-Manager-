@@ -16,7 +16,8 @@ export interface SpotifyPlaylist {
   name: string;
   description: string | null;
   images: SpotifyImage[];
-  tracks: { total: number };
+  tracks?: { total: number };
+  items?: { total: number; href: string };
   owner: { id: string; display_name: string | null };
   public: boolean;
   snapshot_id: string;

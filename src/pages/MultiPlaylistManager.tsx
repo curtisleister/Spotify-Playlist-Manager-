@@ -321,7 +321,7 @@ function MultiPlaylistManager() {
                         {playlist.name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {playlist.tracks?.total ?? 0} tracks
+                        {playlist.items?.total ?? playlist.tracks?.total ?? 0} tracks
                       </p>
                     </div>
                     {isLoading && (

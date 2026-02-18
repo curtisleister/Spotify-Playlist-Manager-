@@ -60,9 +60,6 @@ class SpotifyService {
 
     while (offset < total) {
       const response = await this.getPlaylists(limit, offset);
-      if (offset === 0 && response.items.length > 0) {
-        console.log('Raw first playlist from API:', JSON.stringify(response.items[0], null, 2));
-      }
       const validPlaylists = response.items.filter(
         (item): item is SpotifyPlaylist => item !== null && item !== undefined
       );
@@ -74,36 +71,7 @@ class SpotifyService {
     return playlists;
   }
 
-  private async fetchFullUrl<T>(url: string): Promise<T> {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (response.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      const message = error?.error?.message || `API error: ${response.status}`;
-      console.error('Spotify API error:', url, response.status, error);
-      throw new Error(message);
-    }
-
-    return response.json();
-  }
-
-  async getPlaylist(playlistId: string): Promise<{
-    name: string;
-    tracks: { items: PlaylistTrack[]; total: number; next: string | null };
-  }> {
-    return this.fetch(`/playlists/${playlistId}`);
-  }
-
-  async getPlaylistTracks(
+  async getPlaylistItems(
     playlistId: string,
     limit = 100,
     offset = 0
@@ -113,48 +81,22 @@ class SpotifyService {
     next: string | null;
   }> {
     return this.fetch(
-      `/playlists/${playlistId}/tracks?limit=${limit}&offset=${offset}`
+      `/playlists/${playlistId}/items?limit=${limit}&offset=${offset}`
     );
   }
 
   async getAllPlaylistTracks(playlistId: string): Promise<PlaylistTrack[]> {
     const tracks: PlaylistTrack[] = [];
+    let offset = 0;
+    const limit = 100;
+    let total = Infinity;
 
-    try {
-      // Primary approach: use /playlists/{id}/tracks
-      let offset = 0;
-      const limit = 100;
-      let total = Infinity;
-
-      while (offset < total) {
-        const response = await this.getPlaylistTracks(playlistId, limit, offset);
-        const validTracks = response.items.filter((item) => item.track !== null);
-        tracks.push(...validTracks);
-        total = response.total;
-        offset += limit;
-      }
-
-      return tracks;
-    } catch {
-      console.log('Tracks endpoint failed, trying full playlist endpoint...');
-    }
-
-    // Fallback: fetch tracks from /playlists/{id}
-    const playlist = await this.getPlaylist(playlistId);
-    const firstPage = playlist.tracks;
-    const validTracks = firstPage.items.filter((item) => item?.track !== null);
-    tracks.push(...validTracks);
-
-    // Follow pagination via full next URLs
-    let nextUrl = firstPage.next;
-    while (nextUrl) {
-      const page = await this.fetchFullUrl<{
-        items: PlaylistTrack[];
-        next: string | null;
-      }>(nextUrl);
-      const valid = page.items.filter((item) => item?.track !== null);
-      tracks.push(...valid);
-      nextUrl = page.next;
+    while (offset < total) {
+      const response = await this.getPlaylistItems(playlistId, limit, offset);
+      const validTracks = response.items.filter((item) => item?.track !== null);
+      tracks.push(...validTracks);
+      total = response.total;
+      offset += limit;
     }
 
     return tracks;
@@ -182,7 +124,7 @@ class SpotifyService {
     // API accepts max 100 tracks at a time
     for (let i = 0; i < trackUris.length; i += 100) {
       const batch = trackUris.slice(i, i + 100);
-      await this.fetch(`/playlists/${playlistId}/tracks`, {
+      await this.fetch(`/playlists/${playlistId}/items`, {
         method: 'DELETE',
         body: JSON.stringify({
           tracks: batch.map((uri) => ({ uri })),
@@ -197,7 +139,7 @@ class SpotifyService {
   ): Promise<void> {
     for (let i = 0; i < trackUris.length; i += 100) {
       const batch = trackUris.slice(i, i + 100);
-      await this.fetch(`/playlists/${playlistId}/tracks`, {
+      await this.fetch(`/playlists/${playlistId}/items`, {
         method: 'POST',
         body: JSON.stringify({ uris: batch }),
       });

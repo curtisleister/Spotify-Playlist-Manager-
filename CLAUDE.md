@@ -170,9 +170,11 @@ Spotify-Playlist-Manager-/
 
 ### API Integration Layer
 - `src/services/spotify.ts` — singleton service class wrapping all Spotify API calls
-- Handles pagination automatically (playlists, tracks)
+- Handles pagination automatically (playlists, items)
 - Batches requests for audio features and track removal (100 per request max)
 - Throws `'UNAUTHORIZED'` on 401 to trigger re-auth
+- **IMPORTANT**: Spotify renamed `/playlists/{id}/tracks` to `/playlists/{id}/items` — always use the `/items` endpoint
+- The simplified playlist object uses `items: {href, total}` not `tracks: {href, total}`
 
 ### State Management
 - React local state (`useState`) + prop drilling — no global state library

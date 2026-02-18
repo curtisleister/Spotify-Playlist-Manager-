@@ -23,7 +23,6 @@ function Dashboard({ user, onLogout }: DashboardProps) {
         setLoading(true);
         setError(null);
         const data = await spotifyService.getAllPlaylists();
-        console.log('Playlists loaded:', data.map(p => ({ name: p.name, tracks: p.tracks, id: p.id })));
         if (!cancelled) {
           setPlaylists(data);
         }
@@ -60,7 +59,6 @@ function Dashboard({ user, onLogout }: DashboardProps) {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <h1 className="text-xl font-bold text-white sm:text-2xl">
             Spotify Playlist Manager
-            <span className="ml-2 text-xs text-gray-600">v2</span>
           </h1>
 
           <div className="flex items-center gap-4">
@@ -229,8 +227,8 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                       {playlist.name}
                     </span>
                     <span className="mt-1 truncate text-sm text-[#b3b3b3]">
-                      {playlist.tracks?.total ?? 0}{' '}
-                      {(playlist.tracks?.total ?? 0) === 1 ? 'track' : 'tracks'}
+                      {playlist.items?.total ?? playlist.tracks?.total ?? 0}{' '}
+                      {(playlist.items?.total ?? playlist.tracks?.total ?? 0) === 1 ? 'track' : 'tracks'}
                       {' \u00B7 '}
                       {playlist.owner?.display_name ?? 'Unknown'}
                     </span>
